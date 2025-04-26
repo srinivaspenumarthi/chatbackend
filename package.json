@@ -1,13 +1,14 @@
 {
   "name": "server",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Random Video Chat Backend Server",
+  "main": "dist/index.js",
   "scripts": {
-    "start": "tsc && node dist/index"
+    "build": "tsc",
+    "start": "node dist/index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Your Name",
   "license": "ISC",
   "dependencies": {
     "@types/express": "^4.17.17",
