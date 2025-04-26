@@ -5,7 +5,6 @@ import { handleStart, handleDisconnect, getType } from './lib';
 import { Room, GetTypesResult } from './types';
 
 const app = express();
-app.use(cors());
 
 const PORT = process.env.PORT || 8000;
 const server = app.listen(PORT, () => console.log(`Server is up, ${PORT}`));
