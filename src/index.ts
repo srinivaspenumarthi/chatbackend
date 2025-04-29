@@ -21,7 +21,7 @@ const server = app.listen(PORT, () => console.log(`Server is up, ${PORT}`));
 // --- Socket.io server with CORS too
 const io = new Server(server, {
   cors: {
-    origin: 'https://chatfrontend-2zcp.vercel.app', // <<< same frontend URL
+    origin: 'https://randomconnect.netlify.app', // <<< same frontend URL
     methods: ['GET', 'POST'],
     credentials: true
   }
