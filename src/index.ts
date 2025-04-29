@@ -9,7 +9,7 @@ const app = express();
 
 // --- Proper CORS setup for Express
 app.use(cors({
-  origin: 'https://randomconnect.netlify.app', // <<< your real deployed frontend URL
+  origin: 'https://randomconnect.vercel.app', // <<< your real deployed frontend URL
   methods: ['GET', 'POST'],
   credentials: true
 }));
@@ -21,7 +21,7 @@ const server = app.listen(PORT, () => console.log(`Server is up, ${PORT}`));
 // --- Socket.io server with CORS too
 const io = new Server(server, {
   cors: {
-    origin: 'https://randomconnect.netlify.app', // <<< same frontend URL
+    origin: 'https://randomconnect.vercel.app', // <<< same frontend URL
     methods: ['GET', 'POST'],
     credentials: true
   }
