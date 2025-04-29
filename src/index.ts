@@ -9,7 +9,7 @@ const app = express();
 
 // --- Proper CORS setup for Express
 app.use(cors({
-  origin: 'https://chatfrontend-2zcp.vercel.app', // <<< your real deployed frontend URL
+  origin: 'https://randomconnect.netlify.app', // <<< your real deployed frontend URL
   methods: ['GET', 'POST'],
   credentials: true
 }));
