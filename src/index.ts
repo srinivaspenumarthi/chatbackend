@@ -77,15 +77,14 @@ io.on('connection', (socket) => {
   });
   
   socket.on('skip', (roomId: string) => {
-    socket.to(roomId).emit('skipped');
-    if (rooms.has(roomId)) {
-      const room = rooms.get(roomId);
-      if (room) {
-        if (room.p1id === socket.id || room.p2id === socket.id) {
-          rooms.delete(roomId);
-        }
-      }
+  socket.to(roomId).emit('skipped');
+  const room = rooms.get(roomId);
+  if (room) {
+    if (room.p1.id === socket.id || room.p2.id === socket.id) {
+      rooms.delete(roomId);
     }
-  });
+  }
+  socket.leave(roomId); // optional cleanup
+});
 
 });
