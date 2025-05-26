@@ -38,6 +38,7 @@ io.on('connection', (socket) => {
 
   // Start matchmaking
   socket.on('start', (cb: (type: 'p1' | 'p2') => void) => {
+    console.log(`Socket ${socket.id} requested matchmaking`);
     handleStart(rooms, socket, cb, io);
   });
 
@@ -77,6 +78,7 @@ io.on('connection', (socket) => {
   });
   
   socket.on('skip', (roomId: string) => {
+  console.log(`Socket ${socket.id} skipped room ${roomId}`);
   socket.to(roomId).emit('skipped');
   const room = rooms.get(roomId);
   if (room) {
