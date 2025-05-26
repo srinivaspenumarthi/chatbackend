@@ -2,6 +2,9 @@ import { v4 as uuidv4 } from 'uuid';
 import { Room, GetTypesResult } from './types';
 import { Server, Socket } from 'socket.io';
 
+/**
+ * Handles matchmaking: assigns the socket to a new or existing room
+ */
 export function handleStart(
   rooms: Map<string, Room>,
   socket: Socket,
@@ -14,12 +17,18 @@ export function handleStart(
     // Join as p2
     socket.join(availableRoom.roomId);
     cb('p2');
-    availableRoom.room.isAvailable = false;
-    availableRoom.room.p2.id = socket.id;
-    rooms.set(availableRoom.roomId, availableRoom.room);
 
-    io.to(availableRoom.room.p1.id!).emit('remote-socket', socket.id);
-    socket.emit('remote-socket', availableRoom.room.p1.id);
+    const updatedRoom: Room = {
+      ...availableRoom.room,
+      isAvailable: false,
+      p2: { id: socket.id }
+    };
+
+    rooms.set(availableRoom.roomId, updatedRoom);
+
+    // Notify both parties of the match
+    io.to(updatedRoom.p1.id!).emit('remote-socket', socket.id);
+    socket.emit('remote-socket', updatedRoom.p1.id);
     socket.emit('roomid', availableRoom.roomId);
   } else {
     // Create new room as p1
@@ -28,8 +37,9 @@ export function handleStart(
       roomId,
       isAvailable: true,
       p1: { id: socket.id },
-      p2: { id: null },
+      p2: { id: null }
     };
+
     rooms.set(roomId, newRoom);
     socket.join(roomId);
     cb('p1');
@@ -37,12 +47,15 @@ export function handleStart(
   }
 }
 
+/**
+ * Handles cleanup when a socket disconnects
+ */
 export function handleDisconnect(
   disconnectedId: string,
   rooms: Map<string, Room>,
   io: Server
 ): void {
-  rooms.forEach((room, roomId) => {
+  for (const [roomId, room] of rooms.entries()) {
     if (room.p1.id === disconnectedId) {
       if (room.p2.id) {
         io.to(room.p2.id).emit('disconnected');
@@ -63,9 +76,12 @@ export function handleDisconnect(
         rooms.delete(roomId);
       }
     }
-  });
+  }
 }
 
+/**
+ * Identifies whether the socket is p1 or p2 and returns their counterpart
+ */
 export function getType(id: string, rooms: Map<string, Room>): GetTypesResult {
   for (const room of rooms.values()) {
     if (room.p1.id === id) {
@@ -78,11 +94,14 @@ export function getType(id: string, rooms: Map<string, Room>): GetTypesResult {
   return false;
 }
 
+/**
+ * Finds an available room where someone is waiting
+ */
 function findAvailableRoom(
   rooms: Map<string, Room>,
   socketId: string
 ): { roomId: string; room: Room } | null {
-  for (const [roomId, room] of rooms) {
+  for (const [roomId, room] of rooms.entries()) {
     if (room.isAvailable && room.p1.id !== socketId) {
       return { roomId, room };
     }
