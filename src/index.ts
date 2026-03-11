@@ -2,7 +2,7 @@ import express from 'express';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import { handleStart, handleDisconnect, getType, removeSocketFromRooms } from './lib';
-import { Room } from './types';
+import { MatchPayload, Room } from './types';
 
 const DEFAULT_ORIGINS = [
   'https://randomconnect.netlify.app',
@@ -47,46 +47,52 @@ io.on('connection', (socket) => {
   onlineUsers++;
   io.emit('online', onlineUsers);
 
-  socket.on('start', (cb: (type: 'p1' | 'p2') => void) => {
+  socket.on('start', (cb: (payload: MatchPayload | { type: 'p1' | 'p2' }) => void) => {
     console.log(`Socket ${socket.id} requested matchmaking`);
     handleStart(rooms, socket, cb, io);
   });
 
   socket.on('disconnect', () => {
-    onlineUsers--;
+    onlineUsers = Math.max(onlineUsers - 1, 0);
     io.emit('online', onlineUsers);
     handleDisconnect(socket.id, rooms, io);
   });
 
-  socket.on('ice:send', ({ candidate, to }: { candidate: RTCIceCandidateInit; to?: string }) => {
+  socket.on('ice:send', ({ candidate, to, roomId }: { candidate: RTCIceCandidateInit; to?: string; roomId?: string }) => {
     const typeInfo = getType(socket.id, rooms);
     if (!typeInfo) return;
 
     const targetId = typeInfo.type === 'p1' ? typeInfo.p2id : typeInfo.p1id;
+    if (typeInfo.roomId !== roomId) return;
     if (targetId && (!to || to === targetId)) {
       io.to(targetId).emit('ice:reply', { candidate, from: socket.id });
     }
   });
 
-  socket.on('sdp:send', ({ sdp, to }: { sdp: RTCSessionDescriptionInit; to?: string }) => {
+  socket.on('sdp:send', ({ sdp, to, roomId }: { sdp: RTCSessionDescriptionInit; to?: string; roomId?: string }) => {
     const typeInfo = getType(socket.id, rooms);
     if (!typeInfo) return;
 
     const targetId = typeInfo.type === 'p1' ? typeInfo.p2id : typeInfo.p1id;
+    if (typeInfo.roomId !== roomId) return;
     if (targetId && (!to || to === targetId)) {
       io.to(targetId).emit('sdp:reply', { sdp, from: socket.id });
     }
   });
 
-  socket.on('send-message', (message: string) => {
+  socket.on('send-message', ({ message, roomId }: { message: string; roomId: string }) => {
     const typeInfo = getType(socket.id, rooms);
     if (!typeInfo) return;
+    if (typeInfo.roomId !== roomId) return;
 
     socket.to(typeInfo.roomId).emit('get-message', message);
   });
 
-  socket.on('skip', () => {
+  socket.on('skip', ({ roomId }: { roomId?: string } = {}) => {
     console.log(`Socket ${socket.id} skipped current room`);
+    const typeInfo = getType(socket.id, rooms);
+    if (!typeInfo) return;
+    if (roomId && typeInfo.roomId !== roomId) return;
     removeSocketFromRooms(socket.id, rooms, io, 'skipped');
   });
 });
