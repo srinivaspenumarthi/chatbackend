@@ -1,12 +1,7 @@
 export interface Room {
   roomId: string;
-  isAvailable: boolean;
-  p1: {
-    id: string | null;
-  };
-  p2: {
-    id: string | null;
-  };
+  p1Id: string;
+  p2Id: string | null;
 }
 
 export interface MatchPayload {
@@ -15,7 +10,8 @@ export interface MatchPayload {
   type: 'p1' | 'p2';
 }
 
-export type GetTypesResult =
-  | { type: 'p1'; p2id: string | null; roomId: string }
-  | { type: 'p2'; p1id: string | null; roomId: string }
-  | false;
+export interface SessionInfo {
+  roomId: string;
+  peerId: string | null;
+  type: 'p1' | 'p2';
+}
