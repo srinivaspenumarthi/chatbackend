@@ -50,6 +50,7 @@ export function handleStart(
 
   if (availableRoom) {
     socket.join(availableRoom.roomId);
+    cb({ type: 'p2' });
 
     const updatedRoom: Room = {
       ...availableRoom.room,
@@ -64,11 +65,15 @@ export function handleStart(
       remoteSocketId: socket.id,
       type: 'p1'
     } satisfies MatchPayload);
+    io.to(updatedRoom.p1.id!).emit('remote-socket', socket.id);
+    io.to(updatedRoom.p1.id!).emit('roomid', updatedRoom.roomId);
     socket.emit('match-found', {
       roomId: updatedRoom.roomId,
       remoteSocketId: updatedRoom.p1.id!,
       type: 'p2'
     } satisfies MatchPayload);
+    socket.emit('remote-socket', updatedRoom.p1.id);
+    socket.emit('roomid', updatedRoom.roomId);
     return;
   }
 
