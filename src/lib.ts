@@ -1,5 +1,5 @@
 import { v4 as uuidv4 } from 'uuid';
-import { Room, GetTypesResult } from './types';
+import { Room, GetTypesResult, MatchPayload } from './types';
 import { Server, Socket } from 'socket.io';
 
 /**
@@ -40,7 +40,7 @@ export function removeSocketFromRooms(
 export function handleStart(
   rooms: Map<string, Room>,
   socket: Socket,
-  cb: (type: 'p1' | 'p2') => void,
+  cb: (payload: MatchPayload | { type: 'p1' | 'p2' }) => void,
   io: Server
 ): void {
   removeSocketFromRooms(socket.id, rooms);
@@ -50,7 +50,6 @@ export function handleStart(
 
   if (availableRoom) {
     socket.join(availableRoom.roomId);
-    cb('p2');
 
     const updatedRoom: Room = {
       ...availableRoom.room,
@@ -60,9 +59,16 @@ export function handleStart(
 
     rooms.set(availableRoom.roomId, updatedRoom);
 
-    io.to(updatedRoom.p1.id!).emit('remote-socket', socket.id);
-    socket.emit('remote-socket', updatedRoom.p1.id);
-    io.to(updatedRoom.roomId).emit('roomid', availableRoom.roomId);
+    io.to(updatedRoom.p1.id!).emit('match-found', {
+      roomId: updatedRoom.roomId,
+      remoteSocketId: socket.id,
+      type: 'p1'
+    } satisfies MatchPayload);
+    socket.emit('match-found', {
+      roomId: updatedRoom.roomId,
+      remoteSocketId: updatedRoom.p1.id!,
+      type: 'p2'
+    } satisfies MatchPayload);
     return;
   }
 
@@ -76,7 +82,7 @@ export function handleStart(
 
   rooms.set(roomId, newRoom);
   socket.join(roomId);
-  cb('p1');
+  cb({ type: 'p1' });
   socket.emit('roomid', roomId);
 }
 
