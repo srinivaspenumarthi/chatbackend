@@ -16,8 +16,15 @@ export function removeSocketFromRooms(
       continue;
     }
 
+    const participantIds = [room.p1.id, room.p2.id].filter((id): id is string => Boolean(id));
     const otherId = room.p1.id === socketId ? room.p2.id : room.p1.id;
     rooms.delete(roomId);
+
+    if (io) {
+      participantIds.forEach((participantId) => {
+        io.sockets.sockets.get(participantId)?.leave(roomId);
+      });
+    }
 
     if (otherId && io) {
       io.to(otherId).emit(eventName);
@@ -37,6 +44,7 @@ export function handleStart(
   io: Server
 ): void {
   removeSocketFromRooms(socket.id, rooms);
+  leaveStaleRooms(socket);
 
   const availableRoom = findAvailableRoom(rooms, socket.id);
 
@@ -111,4 +119,12 @@ function findAvailableRoom(
     }
   }
   return null;
+}
+
+function leaveStaleRooms(socket: Socket): void {
+  socket.rooms.forEach((roomId) => {
+    if (roomId !== socket.id) {
+      socket.leave(roomId);
+    }
+  });
 }
