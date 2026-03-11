@@ -9,6 +9,12 @@ export interface Room {
   };
 }
 
+export interface MatchPayload {
+  roomId: string;
+  remoteSocketId: string;
+  type: 'p1' | 'p2';
+}
+
 export type GetTypesResult =
   | { type: 'p1'; p2id: string | null; roomId: string }
   | { type: 'p2'; p1id: string | null; roomId: string }
