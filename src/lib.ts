@@ -3,7 +3,32 @@ import { Room, GetTypesResult } from './types';
 import { Server, Socket } from 'socket.io';
 
 /**
- * Handles matchmaking: assigns the socket to a new or existing room
+ * Removes a socket from any existing room before rematching.
+ */
+export function removeSocketFromRooms(
+  socketId: string,
+  rooms: Map<string, Room>,
+  io?: Server,
+  eventName: 'disconnected' | 'skipped' = 'disconnected'
+): void {
+  for (const [roomId, room] of rooms.entries()) {
+    if (room.p1.id !== socketId && room.p2.id !== socketId) {
+      continue;
+    }
+
+    const otherId = room.p1.id === socketId ? room.p2.id : room.p1.id;
+    rooms.delete(roomId);
+
+    if (otherId && io) {
+      io.to(otherId).emit(eventName);
+    }
+
+    return;
+  }
+}
+
+/**
+ * Handles matchmaking: assigns the socket to a new or existing room.
  */
 export function handleStart(
   rooms: Map<string, Room>,
@@ -11,10 +36,11 @@ export function handleStart(
   cb: (type: 'p1' | 'p2') => void,
   io: Server
 ): void {
+  removeSocketFromRooms(socket.id, rooms);
+
   const availableRoom = findAvailableRoom(rooms, socket.id);
 
   if (availableRoom) {
-    // Join as p2
     socket.join(availableRoom.roomId);
     cb('p2');
 
@@ -26,76 +52,54 @@ export function handleStart(
 
     rooms.set(availableRoom.roomId, updatedRoom);
 
-    // Notify both parties of the match
     io.to(updatedRoom.p1.id!).emit('remote-socket', socket.id);
     socket.emit('remote-socket', updatedRoom.p1.id);
-    socket.emit('roomid', availableRoom.roomId);
-  } else {
-    // Create new room as p1
-    const roomId = uuidv4();
-    const newRoom: Room = {
-      roomId,
-      isAvailable: true,
-      p1: { id: socket.id },
-      p2: { id: null }
-    };
-
-    rooms.set(roomId, newRoom);
-    socket.join(roomId);
-    cb('p1');
-    socket.emit('roomid', roomId);
+    io.to(updatedRoom.roomId).emit('roomid', availableRoom.roomId);
+    return;
   }
+
+  const roomId = uuidv4();
+  const newRoom: Room = {
+    roomId,
+    isAvailable: true,
+    p1: { id: socket.id },
+    p2: { id: null }
+  };
+
+  rooms.set(roomId, newRoom);
+  socket.join(roomId);
+  cb('p1');
+  socket.emit('roomid', roomId);
 }
 
 /**
- * Handles cleanup when a socket disconnects
+ * Handles cleanup when a socket disconnects.
  */
 export function handleDisconnect(
   disconnectedId: string,
   rooms: Map<string, Room>,
   io: Server
 ): void {
-  for (const [roomId, room] of rooms.entries()) {
-    if (room.p1.id === disconnectedId) {
-      if (room.p2.id) {
-        io.to(room.p2.id).emit('disconnected');
-        room.p1.id = room.p2.id;
-        room.p2.id = null;
-        room.isAvailable = true;
-        rooms.set(roomId, room);
-      } else {
-        rooms.delete(roomId);
-      }
-    } else if (room.p2.id === disconnectedId) {
-      if (room.p1.id) {
-        io.to(room.p1.id).emit('disconnected');
-        room.p2.id = null;
-        room.isAvailable = true;
-        rooms.set(roomId, room);
-      } else {
-        rooms.delete(roomId);
-      }
-    }
-  }
+  removeSocketFromRooms(disconnectedId, rooms, io, 'disconnected');
 }
 
 /**
- * Identifies whether the socket is p1 or p2 and returns their counterpart
+ * Identifies whether the socket is p1 or p2 and returns their counterpart.
  */
 export function getType(id: string, rooms: Map<string, Room>): GetTypesResult {
   for (const room of rooms.values()) {
     if (room.p1.id === id) {
-      return { type: 'p1', p2id: room.p2.id };
+      return { type: 'p1', p2id: room.p2.id, roomId: room.roomId };
     }
     if (room.p2.id === id) {
-      return { type: 'p2', p1id: room.p1.id };
+      return { type: 'p2', p1id: room.p1.id, roomId: room.roomId };
     }
   }
   return false;
 }
 
 /**
- * Finds an available room where someone is waiting
+ * Finds an available room where someone is waiting.
  */
 function findAvailableRoom(
   rooms: Map<string, Room>,
