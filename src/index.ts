@@ -58,22 +58,22 @@ io.on('connection', (socket) => {
     handleDisconnect(socket.id, rooms, io);
   });
 
-  socket.on('ice:send', ({ candidate }: { candidate: RTCIceCandidateInit }) => {
+  socket.on('ice:send', ({ candidate, to }: { candidate: RTCIceCandidateInit; to?: string }) => {
     const typeInfo = getType(socket.id, rooms);
     if (!typeInfo) return;
 
     const targetId = typeInfo.type === 'p1' ? typeInfo.p2id : typeInfo.p1id;
-    if (targetId) {
+    if (targetId && (!to || to === targetId)) {
       io.to(targetId).emit('ice:reply', { candidate, from: socket.id });
     }
   });
 
-  socket.on('sdp:send', ({ sdp }: { sdp: RTCSessionDescriptionInit }) => {
+  socket.on('sdp:send', ({ sdp, to }: { sdp: RTCSessionDescriptionInit; to?: string }) => {
     const typeInfo = getType(socket.id, rooms);
     if (!typeInfo) return;
 
     const targetId = typeInfo.type === 'p1' ? typeInfo.p2id : typeInfo.p1id;
-    if (targetId) {
+    if (targetId && (!to || to === targetId)) {
       io.to(targetId).emit('sdp:reply', { sdp, from: socket.id });
     }
   });
