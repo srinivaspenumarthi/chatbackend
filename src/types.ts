@@ -10,6 +10,6 @@ export interface Room {
 }
 
 export type GetTypesResult =
-  | { type: 'p1'; p2id: string | null }
-  | { type: 'p2'; p1id: string | null }
+  | { type: 'p1'; p2id: string | null; roomId: string }
+  | { type: 'p2'; p1id: string | null; roomId: string }
   | false;
